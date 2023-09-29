@@ -1,0 +1,357 @@
+---
+title: "HW1"
+author: "Michelle Hernandez"
+format:
+  html:
+    embed-resources: true
+editor: visual
+---
+
+```{r}
+library(data.table)
+library(leaflet)
+library(ggplot2)
+library(dplyr)
+```
+
+
+### Goal: to see whether daily concentrations of PM2.5 (particulate matter air pollution with aerodynamic diameter less than 2.5 `\(\mu\)`m) have decreased in California over the last 20 years (from 2002 to 2022).
+
+## 1. Read in Data
+
+
+```{r}
+read_csv02 = read.csv('/Users/michellehernandez/Desktop/DataScience/HW1/ad_viz_plotval_data_2002.csv')
+data_02 = data.table(read_csv02)
+
+read_csv22 = read.csv('/Users/michellehernandez/Desktop/DataScience/HW1/ad_viz_plotval_data_2020.csv')
+data_22 = data.table(read_csv22)
+```
+
+```{r}
+dim(data_22)
+dim(data_02)
+# data from 2020 is much bigger
+
+head(data_02)
+head(data_22)
+
+str(data_22)
+str(data_02)
+
+names(data_02)
+names(data_22)
+
+
+```
+
+
+## 2. Combine data
+
+
+```{r}
+#combine data
+combo = rbind(data_02, data_22)
+#extract year & make year column
+combo$Year <- as.integer(format(strptime(combo$Date, format = "%m/%d/%Y"), "%Y"))
+#make month
+combo$Month <- as.integer(format(strptime(combo$Date, format = "%m/%d/%Y"), "%m"))
+```
+
+```{r}
+#rename key variables
+names(combo)
+names(combo)[names(combo) == "Daily.Mean.PM2.5.Concentration" ] <- "mean_pm25"
+names(combo)[names(combo) == "SITE_LONGITUDE" ] <- "lon"
+names(combo)[names(combo) == "SITE_LATITUDE" ] <- "lat"
+names(combo)[names(combo) == "Site.ID" ] <- "site"
+names(combo)[names(combo) == "DAILY_AQI_VALUE" ] <- "aqi_val"
+names(combo)[names(combo) == "DAILY_OBS_COUNT" ] <- "obs_count"
+names(combo)[names(combo) == "AQS_PARAMETER_CODE" ] <- "aqi_code"
+
+```
+
+
+## 3. Map
+
+
+```{r}
+stations <- combo %>%
+  select(lat, lon, Year) %>%  
+  distinct(lat, lon, .keep_all = TRUE) 
+
+leaflet(stations) %>% 
+  addProviderTiles('CartoDB.Positron') %>% 
+  addCircles(lat = ~lat, lng = ~lon, opacity = 1, fillOpacity = 1, radius = 400,  color = ~ifelse(stations$Year == 2002, "red", ifelse(stations$Year == 2022, "blue", "black")))
+```
+
+
+## 4. Check for missing
+
+
+```{r}
+max_pm <- subset(combo, mean_pm25 == 302.5)
+print(max_pm)
+
+large_pm <- subset(combo, mean_pm25 > 10.2)
+print(large_pm)
+
+large_100pm <- subset(combo, mean_pm25 > 100)
+print(large_100pm)
+
+pm0 <- subset(combo, mean_pm25 < 0)
+print(pm0)
+# there are some negative values
+
+#remove negtive & NAs for PM25 values
+
+filter_combo <- combo %>%
+  filter(!is.na(mean_pm25) & mean_pm25 > 0)
+
+
+```
+
+```{r}
+summary(filter_combo$mean_pm25)
+boxplot(filter_combo$mean_pm25)
+hist(filter_combo$mean_pm25)
+
+```
+
+```{r}
+ggplot(filter_combo, aes(x = Date, y = mean_pm25, 
+      color = factor(Year), group = factor(Year))) + 
+      geom_line()
+```
+
+```{r}
+monthly_means <- filter_combo %>%
+  group_by(Year, Month) %>%
+  summarize(mean_pm25 = mean(mean_pm25, na.rm = TRUE))
+
+# Create the plot
+ggplot(monthly_means, aes(x = Month, y = mean_pm25, color = factor(Year), group = factor(Year))) + 
+  geom_line() +
+  scale_x_continuous(breaks = 1:12) +  # Ensure x-axis shows all months
+  labs(x = "Month", y = "Mean PM2.5") 
+```
+
+```{r}
+# 2022 only
+filtered_combo22 <- filter_combo %>% filter(Year == 2022)
+
+ggplot(filtered_combo22, aes(x = Date, y = mean_pm25, color = factor(Year), group = factor(Year))) + 
+  geom_line() +
+  labs(x = "Date", y = "Mean PM2.5")
+
+# 2002 only
+filtered_combo02 <- filter_combo %>% filter(Year == 2002)
+
+ggplot(filtered_combo02, aes(x = Date, y = mean_pm25, color = factor(Year), group = factor(Year))) + 
+  geom_line() +
+  labs(x = "Date", y = "Mean PM2.5")
+```
+
+```{r}
+ggplot(filter_combo, aes(x = Month, y = mean_pm25, color = factor(Year))) + 
+  geom_line() +
+  scale_x_continuous(breaks = 1:12) +
+  labs(x = "Month", y = "Mean PM2.5")
+```
+
+
+## 5. Explore.
+
+Create exploratory plots (e.g. boxplots, histograms, line plots) and summary statistics that best suit each level of data. Be sure to write up explanations of what you observe in these data. The primary question you will answer is whether daily concentrations of PM2.5 (particulate matter air pollution with aerodynamic diameter less than 2.5 `\(\mu\)`m) have decreased in California over the last 20 years (from 2002 to 2022).
+
+state
+
+county
+
+site in Los Angeles
+
+
+```{r}
+length(unique(combo$COUNTY))
+#there are 51 counties
+
+la_combo <- subset(filter_combo, COUNTY == 'Los Angeles')
+length(unique(la_combo$site))
+#there are 18 sites in los angeles
+
+
+```
+
+
+ggplot(la_combo, aes(x = factor(Year), y = mean_pm25, fill = factor(Year))) +
+
+geom_boxplot() +
+
+labs(x = "Year", y = "PM2.5 Levels", fill = "Year") +
+
+ggtitle("Boxplot of PM2.5 Levels in Los Angeles County (2002 vs. 2022)")
+
+
+```{r}
+#State Level
+ggplot(filter_combo, aes(x = STATE, y = mean_pm25, fill = factor(Year))) +
+  geom_boxplot() +
+  labs(x = "State", y = "PM2.5 Levels", fill = "Year") +
+  ggtitle("Boxplot of PM2.5 Levels by State (2002 vs. 2022)")
+
+hist(combo$mean_pm25[combo$Year=='2002'])
+hist(combo$mean_pm25[combo$Year=='2022'])
+
+
+
+
+```
+
+```{r}
+# county level
+ggplot(la_combo, aes(x = factor(Year), y = mean_pm25, fill = factor(Year))) +
+  geom_boxplot() +
+  labs(x = "Year", y = "PM2.5 Levels", fill = "Year") +
+  ggtitle("Boxplot of PM2.5 Levels in Los Angeles County (2002 vs. 2022)")
+hist(combo$mean_pm25[combo$Year=='2002' & combo$COUNTY=='Los Angeles'])
+hist(combo$mean_pm25[combo$Year=='2022' & combo$COUNTY=='Los Angeles'])
+```
+
+```{r}
+la_county_data <- filter_combo %>%
+  filter(COUNTY == 'Los Angeles')
+
+la_county_data_2002 <- la_county_data %>%
+  filter(Year == 2002)
+
+
+la_county_data_2022 <- la_county_data %>%
+  filter(Year == 2022)
+
+
+summary_stats_2002 <- la_county_data_2002 %>%
+  group_by(site) %>%
+  summarize(
+    mean_pm25_mean_2002 = mean(mean_pm25),
+    mean_pm25_median_2002 = median(mean_pm25),
+    mean_pm25_min_2002 = min(mean_pm25),
+    mean_pm25_max_2002 = max(mean_pm25),
+    mean_pm25_sd_2002 = sd(mean_pm25)
+  )
+
+
+summary_stats_2022 <- la_county_data_2022 %>%
+  group_by(site) %>%
+  summarize(
+    mean_pm25_mean_2022 = mean(mean_pm25),
+    mean_pm25_median_2022 = median(mean_pm25),
+    mean_pm25_min_2022 = min(mean_pm25),
+    mean_pm25_max_2022 = max(mean_pm25),
+    mean_pm25_sd_2022 = sd(mean_pm25)
+  )
+
+summary_stats_combine <- full_join(summary_stats_2002, summary_stats_2022, by = "site")
+
+
+summary_stats_combined<- summary_stats_combine %>%
+  filter(!is.na(mean_pm25_mean_2002)) %>%
+  filter(!is.na(mean_pm25_mean_2022))
+
+print(summary_stats_combined)
+
+different_sites <- summary_stats_combined %>%
+  filter(is.na(mean_pm25_mean_2002) | is.na(mean_pm25_mean_2022))
+
+print(different_sites)
+
+
+#los angeles sites
+
+
+# 2022
+la_county_data_2002
+
+monthly_mean_pm25_la_county_2022 <- la_county_data_2002 %>%
+  group_by(Month) %>%
+  summarize(mean_pm25 = mean(mean_pm25, na.rm = TRUE))
+
+monthly_mean_pm25_la_county_2022
+
+#2002
+la_county_data_2022
+
+monthly_mean_pm25_la_county_2002 <- la_county_data_2022 %>%
+  group_by(Month) %>%
+  summarize(mean_pm25 = mean(mean_pm25, na.rm = TRUE))
+
+monthly_mean_pm25_la_county_2002
+
+
+
+
+combined_data <- bind_rows(
+  monthly_mean_pm25_la_county_2002 %>% mutate(Year = 2002),
+  monthly_mean_pm25_la_county_2022 %>% mutate(Year = 2022)
+)
+
+
+ggplot(combined_data, aes(x = Month, y = mean_pm25, color = factor(Year))) +
+  geom_line() +
+  labs(x = "Month", y = "Mean PM2.5 Levels", color = "Year") +
+  ggtitle("Monthly Mean PM2.5 Levels in Los Angeles County (2002 vs. 2022)")
+```
+
+```{r}
+mean_pm25_by_year_month <- filter_combo %>%
+  group_by(Year, Month, Year2022 = ifelse(Year == 2022, "2022", "2002")) %>%
+  summarize(Mean_PM2.5 = mean(mean_pm25))
+
+# Create the bar graph using ggplot2
+ggplot(mean_pm25_by_year_month, aes(x = Month, y = Mean_PM2.5, fill = Year2022)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~Year, nrow = 1) +  # Separate bars for 2002 and 2022
+  labs(x = "Month", y = "Mean PM2.5") +
+  scale_fill_manual(values = c("2002" = "blue", "2022" = "red")) +  # Customize bar colors
+  theme_minimal()
+```
+
+```{r}
+
+ggplot(summary_stats_combined, aes(x = site)) +
+  geom_bar(aes(y = mean_pm25_mean_2002, fill = "2002"), stat = "identity", position = "dodge", width = 0.4) +
+  geom_bar(aes(y = mean_pm25_mean_2022, fill = "2022"), stat = "identity", position = "dodge", width = 0.4) +
+  labs(x = "Site", y = "Mean PM2.5 Level") +
+  ggtitle("Mean PM2.5 Levels (2002 vs. 2022) by Site") +
+  scale_fill_manual(values = c("2002" = "blue", "2022" = "red")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+mean_pm25_by_year <- filter_combo %>%
+  group_by(Year) %>%
+  summarize(Mean_PM2.5 = mean(mean_pm25))
+
+
+ggplot(mean_pm25_by_year, aes(x = factor(Year), y = Mean_PM2.5, fill = factor(Year))) +
+  geom_bar(stat = "identity", width = 0.7) +
+  labs(x = "Year", y = "Mean PM2.5") +
+  scale_fill_manual(values = c("2002" = "blue", "2022" = "red")) 
+```
+
+```{r}
+# t tests
+
+# state
+t.test(filter_combo$mean_pm25[filter_combo$Year=='2002'], filter_combo$mean_pm25[filter_combo$Year=='2022'])
+
+
+```
+
+```{r}
+# t test
+
+#county
+t.test(filter_combo$mean_pm25[filter_combo$Year=='2002' & filter_combo$COUNTY=='Los Angeles'], filter_combo$mean_pm25[filter_combo$Year=='2022'& filter_combo$COUNTY=='Los Angeles'])
+```
+
