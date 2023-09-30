@@ -19,11 +19,11 @@ library(dplyr)
 ## 1. Read in Data
 
 ```{r}
-read_csv02 = read.csv('/Users/michellehernandez/Desktop/DataScience/HW1/ad_viz_plotval_data_2002.csv')
+read_csv02 = read.csv('/Users/michellehernandez/Desktop/DataScience/HW1/HW1/ad_viz_plotval_data_2002.csv')
 data_02 = data.table(read_csv02)
 
-read_csv22 = read.csv('/Users/michellehernandez/Desktop/DataScience/HW1/ad_viz_plotval_data_2020.csv')
-data_22 = data.table(read_csv22)
+read_csv20 = read.csv('/Users/michellehernandez/Desktop/DataScience/HW1/HW1/ad_viz_plotval_data_2020.csv')
+data_22 = data.table(read_csv20)
 ```
 
 ```{r}
@@ -79,6 +79,8 @@ leaflet(stations) %>%
   addCircles(lat = ~lat, lng = ~lon, opacity = 1, fillOpacity = 1, radius = 400,  color = ~ifelse(stations$Year == 2002, "red", ifelse(stations$Year == 2022, "blue", "black")))
 ```
 
+Looking at the map we can see that the sites for PM2.5 levels do vary by year. So not all the exact same sites are being compared, there are some new stations for 2022 and some in 2002 that were not included in 2022.
+
 ## 4. Check for missing
 
 ```{r}
@@ -93,7 +95,7 @@ print(large_100pm)
 
 pm0 <- subset(combo, mean_pm25 < 0)
 print(pm0)
-# there are some negative values
+
 
 #remove negtive & NAs for PM25 values
 
@@ -103,10 +105,12 @@ filter_combo <- combo %>%
 
 ```
 
+There are some negative values which do not make sense for the PM2.5 levels. There does not appear to be a pattern to the missing values so we will remove those and continue our analysis.
+
 ```{r}
 summary(filter_combo$mean_pm25)
-boxplot(filter_combo$mean_pm25)
-hist(filter_combo$mean_pm25)
+boxplot(filter_combo$mean_pm25, main='Raw PM2.5 Distribution for all years and all stations', ylab='PM 2.5 level', xlab='all stations all years')
+hist(filter_combo$mean_pm25, main='Raw PM2.5 Histogram for all years and all stations', xlab='PM2.5 level', ylab='Frequency')
 
 ```
 
@@ -125,7 +129,7 @@ monthly_means <- filter_combo %>%
 # Create the plot
 ggplot(monthly_means, aes(x = Month, y = mean_pm25, color = factor(Year), group = factor(Year))) + 
   geom_line() +
-  scale_x_continuous(breaks = 1:12) +  # Ensure x-axis shows all months
+  scale_x_continuous(breaks = 1:12) +  
   labs(x = "Month", y = "Mean PM2.5") 
 ```
 
@@ -143,13 +147,6 @@ filtered_combo02 <- filter_combo %>% filter(Year == 2002)
 ggplot(filtered_combo02, aes(x = Date, y = mean_pm25, color = factor(Year), group = factor(Year))) + 
   geom_line() +
   labs(x = "Date", y = "Mean PM2.5")
-```
-
-```{r}
-ggplot(filter_combo, aes(x = Month, y = mean_pm25, color = factor(Year))) + 
-  geom_line() +
-  scale_x_continuous(breaks = 1:12) +
-  labs(x = "Month", y = "Mean PM2.5")
 ```
 
 ## 5. Explore.
@@ -173,14 +170,6 @@ length(unique(la_combo$site))
 
 ```
 
-ggplot(la_combo, aes(x = factor(Year), y = mean_pm25, fill = factor(Year))) +
-
-geom_boxplot() +
-
-labs(x = "Year", y = "PM2.5 Levels", fill = "Year") +
-
-ggtitle("Boxplot of PM2.5 Levels in Los Angeles County (2002 vs. 2022)")
-
 ```{r}
 #State Level
 ggplot(filter_combo, aes(x = STATE, y = mean_pm25, fill = factor(Year))) +
@@ -188,11 +177,22 @@ ggplot(filter_combo, aes(x = STATE, y = mean_pm25, fill = factor(Year))) +
   labs(x = "State", y = "PM2.5 Levels", fill = "Year") +
   ggtitle("Boxplot of PM2.5 Levels by State (2002 vs. 2022)")
 
-hist(combo$mean_pm25[combo$Year=='2002'])
 hist(combo$mean_pm25[combo$Year=='2022'])
 
 
 
+# Create the histogram plot
+hist_data02 <- combo$mean_pm25[combo$Year == '2002']
+hist(hist_data02,
+     main = 'Histogram of Mean PM2.5 in 2002',
+     ylab = 'Frequency',
+     xlab = 'Mean PM2.5 level')
+
+hist_data22 <- combo$mean_pm25[combo$Year == '2022']
+hist(hist_data22,
+     main = 'Histogram of Mean PM2.5 in 2022',
+     ylab = 'Frequency',
+     xlab = 'Mean PM2.5 level')
 
 ```
 
@@ -202,9 +202,23 @@ ggplot(la_combo, aes(x = factor(Year), y = mean_pm25, fill = factor(Year))) +
   geom_boxplot() +
   labs(x = "Year", y = "PM2.5 Levels", fill = "Year") +
   ggtitle("Boxplot of PM2.5 Levels in Los Angeles County (2002 vs. 2022)")
-hist(combo$mean_pm25[combo$Year=='2002' & combo$COUNTY=='Los Angeles'])
-hist(combo$mean_pm25[combo$Year=='2022' & combo$COUNTY=='Los Angeles'])
+
+
+hist_county_02 <- combo$mean_pm25[combo$Year == '2002']
+hist(hist_county_02,
+     main = 'Histogram of Mean PM2.5 in 2002 in LA County',
+     ylab = 'Frequency',
+     xlab = 'Mean PM2.5 level')
+
+hist_county_22 <- combo$mean_pm25[combo$Year == '2022']
+hist(hist_county_22,
+     main = 'Histogram of Mean PM2.5 in 2022 in LA County',
+     ylab = 'Frequency',
+     xlab = 'Mean PM2.5 level')
+
 ```
+
+Is this graph we can see that there is much more variation in PM2.5 level in 2002 compared to 2022 for LA County. There is also a long right tail in the histogram for 2002 which we do not see in 2022.
 
 ```{r}
 la_county_data <- filter_combo %>%
@@ -286,6 +300,7 @@ combined_data <- bind_rows(
 
 ggplot(combined_data, aes(x = Month, y = mean_pm25, color = factor(Year))) +
   geom_line() +
+  scale_x_continuous(breaks = 1:12) +  
   labs(x = "Month", y = "Mean PM2.5 Levels", color = "Year") +
   ggtitle("Monthly Mean PM2.5 Levels in Los Angeles County (2002 vs. 2022)")
 ```
@@ -295,14 +310,18 @@ mean_pm25_by_year_month <- filter_combo %>%
   group_by(Year, Month, Year2022 = ifelse(Year == 2022, "2022", "2002")) %>%
   summarize(Mean_PM2.5 = mean(mean_pm25))
 
+
 ggplot(mean_pm25_by_year_month, aes(x = Month, y = Mean_PM2.5, fill = Year2022)) +
   geom_bar(stat = "identity", position = "dodge") +
   scale_x_continuous(breaks = 1:12) +
-  facet_wrap(~Year, nrow = 1) +  
-  labs(x = "Month", y = "Mean PM2.5") +
-  scale_fill_manual(values = c("2002" = "blue", "2022" = "red")) +  
+  facet_wrap(~Year, nrow = 1) +
+  labs(title = 'Mean PM2.5 Level by Month, for each year', x = "Month", y = "Mean PM2.5") +
+  scale_fill_manual(values = c("2002" = "blue", "2022" = "red"), name = "Year") +
   theme_minimal()
+
 ```
+
+Here we can clearly see that the mean level of PM2.5 is higher in 2002 for every month compared to 2022.
 
 ```{r}
 mean_pm25_by_year <- filter_combo %>%
@@ -312,9 +331,11 @@ mean_pm25_by_year <- filter_combo %>%
 
 ggplot(mean_pm25_by_year, aes(x = factor(Year), y = Mean_PM2.5, fill = factor(Year))) +
   geom_bar(stat = "identity", width = 0.7) +
-  labs(x = "Year", y = "Mean PM2.5") +
+   labs(title = 'Mean PM2.5 Level for Each Year', x = "Year", y = "Mean PM2.5") +
   scale_fill_manual(values = c("2002" = "blue", "2022" = "red")) 
 ```
+
+The overall mean PM2.5 level is much larger in 2002 than 2022.
 
 ```{r}
 # t tests
@@ -332,4 +353,4 @@ t.test(filter_combo$mean_pm25[filter_combo$Year=='2002'], filter_combo$mean_pm25
 t.test(filter_combo$mean_pm25[filter_combo$Year=='2002' & filter_combo$COUNTY=='Los Angeles'], filter_combo$mean_pm25[filter_combo$Year=='2022'& filter_combo$COUNTY=='Los Angeles'])
 ```
 
-It appears that PM2.5 levels have decreased from 2002 to 2022. Looking at plot 1 we can see that 2022 seems to have higher PM2.5 levels, specifically larger extreme values. However if you look at the mean PM2.5 for each month by year, you can see that 2002 has a much higher mean for each month compared to 2022. A t test was also conducted at both the state and county levels (p\<0.0001 for both). Therefore the overall conclusion is that mean PM2.5 levels decreased from 2002 to 2002.
+It appears that PM2.5 levels have decreased from 2002 to 2022. Looking at the raw data we can see that 2022 seems to have higher PM2.5 levels, specifically larger extreme values. However if you look at the line plot and bar plots comparing mean pm2.5 values you can see that 2002 has a much higher mean for each month compared to 2022. This is apparent at the state level and count level and for the means for the whole year. A t test was also conducted at both the state and county levels. Therefore we can conclude that the mean PM2.5 levels are statistically different from 2002 to 2022 at both the state and county levels (p\<0.0001 for both). The overall conclusion that we make from the analysis is that mean PM2.5 levels decreased from 2002 to 2022.
